@@ -1,0 +1,41 @@
+name: Build QSDK for AX6
+
+on:
+  workflow_dispatch: # 仅允许手动点击触发
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04 # 必须用 22.04，20.04 有时太旧会报错
+    timeout-minutes: 360 # 设置6小时超时，防止中途被强杀
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1 # 只拉取最新代码，节省时间和空间
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc g++ binutils patch bzip2 flex make gettext pkg-config unzip zlib1g-dev libc6-dev subversion libncurses5-dev gawk sharutils curl libxml-parser-perl python3-yaml ocaml-nox ocaml ocaml-findlib libssl-dev libfdt-dev repo u-boot-tools device-tree-compiler
+
+      - name: Configure and Compile
+        run: |
+          # 1. 清理可能残留的编译产物
+          # 2. 如果你熟悉 menuconfig，请替换下面这行
+          # make menuconfig
+          
+          # 3. 根据 everything411/qsdk 的说明，使用 wim_rebuild.sh 编译
+          # 根据 AX6 的 512MB 内存，选择 LM512 配置
+          chmod +x wim_rebuild.sh
+          ./wim_rebuild.sh LM512
+
+      - name: Upload Firmware
+        uses: actions/upload-artifact@v4
+        if: always() # 无论编译成功还是失败，都尝试上传产物
+        with:
+          name: QSDK-AX6-Firmware
+          # 修改为你实际编译出的固件路径，通常在此目录下
+          path: |
+            qsdk/bin/ipq/*.ubi
+            qsdk/bin/ipq/*.bin
